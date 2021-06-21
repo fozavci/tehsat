@@ -1,0 +1,38 @@
+﻿<div>
+    @inject Microsoft.JSInterop.IJSRuntime JS
+
+    <p>@Title</p>
+
+    <textarea contenteditable="true" placeholder="Code" @bind="@Code" type="text" class="form-code-large" id="code" />
+    <br />
+    <center>
+        <button @onclick="() => Save(Title,Code)" class="btn btn-primary">Save as .NET Project</button>&nbsp;
+        <button @onclick="Cancel" class="btn btn-secondary">OK</button>
+    </center>
+</div>
+
+@code {
+
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; }
+
+    [Parameter] public string Title { get; set; }
+
+    [Parameter] public string Code { get; set; }
+
+    async Task Cancel() => await BlazoredModal.CancelAsync();
+    async Task Save(String Title, String Code)
+    {
+        Dictionary<String, String> files = new Dictionary<String, String>();
+
+        // .NET 5 project file
+        String cproj = "<Project Sdk=\"Microsoft.NET.Sdk\">\n\n\t<PropertyGroup>\n\t\t<OutputType>Exe</OutputType>\n\t\t<TargetFramework>net5.0</TargetFramework>\n\n\t\t<LangVersion>9.0</LangVersion>\n\n\t</PropertyGroup>\n\n</Project>";
+
+        // Add files to the Dictionary
+        files.Add("Program.cs", Code);
+        files.Add("c2gateimplant.csproj", cproj);
+
+        // Create the ZIP file and offer
+        await FileUtil.SaveAs(JS, "c2gateimplant.zip", FileUtil.CreateZip("c2gateimplant", files));
+    }
+
+}

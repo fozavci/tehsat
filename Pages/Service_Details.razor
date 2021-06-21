@@ -1,0 +1,412 @@
+﻿@page "/service_details"
+
+@using Tehsat
+@inject ProfileManagement PM
+@inject ServiceManagement SM
+@inject ServiceSocketManagement SSM
+
+@if (!update)
+{
+    <div class="simple-form">
+        <div class="form-group">
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <td>Service Name:</td>
+                        <td><input placeholder="Name" @bind="serviceName" type="text" class="form-control" id="serviceName" /></td>
+                    </tr>
+                    <tr>
+                        <td>Service Profile: </td>
+                        <td>
+                            <select value="@serviceProfileId" class="form-control"
+                                    @onchange="@((ChangeEventArgs __e) => serviceProfileId = __e.Value.ToString())">
+                                @foreach (var p in profiles)
+                                {
+                                    <option value="@p.Key">@p.Value.Name</option>
+                                }
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <button @onclick="() => GenerateEmptyService(serviceName, serviceProfileId)" class="btn btn-primary">Next</button>
+                            <button @onclick="Cancel" class="btn btn-secondary">Cancel</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+
+    </div>
+}
+else
+{
+    <div class="blazored-modal-scrollable">
+        <div class="form-group-large">
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <td>Service Name: </td>
+                        <td><input placeholder="Name" @bind="@service.Name" type="text" class="form-control" id="serviceName" /></td>
+                    </tr>
+                    <tr>
+                        <td>Channel Type: </td>
+                        <td>
+                            <select value="@service.ChannelType" class="form-control"
+                                    @onchange="@((ChangeEventArgs __e) => @service.ChannelType = __e.Value.ToString())">
+                                @foreach (var p in channelTypes)
+                                {
+                                    <option value="@p">@p</option>
+                                }
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Service Description: </td>
+                        <td><input placeholder="Description" @bind="@service.Description" type="text" class="form-control" id="serviceDescription" /></td>
+                    </tr>
+                    <tr>
+                        <td>Port: </td>
+                        <td><input placeholder="80" @bind="@service.ChannelObject.Port" type="text" class="form-control" id="service.ChannelObject.Port" /></td>
+                    </tr>
+                    <tr>
+                        <td>TLS: </td>
+                        <td>
+                            <input @bind="@service.ChannelObject.TLS" type="checkbox" id="service.ChannelObject.TLS" />
+                        </td>
+                    </tr>
+                    @if (@service.ChannelObject.TLS)
+                    { 
+                        <tr>
+                        <td>Certificate Path: </td>
+                        <td><input placeholder="Cert/tehsat.pfx" @bind="@service.ChannelObject.TLSCert" type="text" class="form-control" id="service.ChannelObject.TLSCert" /> </td>
+                        </tr>
+                        <tr>
+                        <td>Certificate Password: </td>
+                        <td><input placeholder="123456" @bind="@service.ChannelObject.TLSCertPassword" type="text" class="form-control" id="service.ChannelObject.TLSCertPassword" /> </td>
+                        </tr>
+                    }
+                    <tr>
+                        <td>Update Interval: </td>
+                        <td><input placeholder="10" @bind="@service.ChannelObject.Interval" type="text" class="form-control" id="service.ChannelObject.Interval" /> </td>
+                    </tr>
+
+
+                    @if (service.ChannelType.Contains("HTTP"))
+                    {
+                        <tr>
+                            <td>HTTP URI:</td>
+                            <td><input placeholder="/api/1234" @bind="@service.ChannelObject.HTTPURI" type="text" class="form-control" id="service.ChannelObject.HTTPURI" /></td>
+                        </tr>
+                        <tr>
+                            <td>HTTP Request Type:</td>
+                            <td><input placeholder="GET" @bind="@service.ChannelObject.HTTPRequestMethod" type="text" class="form-control" id="service.ChannelObject.HTTPRequestMethod" /></td>
+                        </tr>
+                        <tr>
+                            <td>HTTP User Agent:</td>
+                            <td><input placeholder="Mozilla 5.0" @bind="@service.ChannelObject.HTTPUserAgent" type="text" class="form-control" id="service.ChannelObject.HTTPUserAgent" /></td>
+                        </tr>
+                        <tr>
+                            <td>HTTP Request Headers:</td>
+                            <td>
+                                <div class="form-group-medium">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Header Name       </th>
+                                                <th>Header Content    </th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var s in service.ChannelObject.HTTPRequestHeaders)
+                                            {
+                                                <tr>
+                                                    <td>@s.Key</td>
+                                                    <td>@s.Value</td>
+                                                    <td>
+                                                        <button @onclick="() => EditRequestHeaderModal(s.Key, s.Value)" class="btn btn-primary-narrow">Edit</button>
+                                                        <button @onclick="() => DeleteRequestHeaderModal(s.Key, s.Value)" class="btn btn-secondary-narrow">Delete</button>
+                                                    </td>
+
+                                                </tr>
+                                            }
+                                            <tr>
+                                                <td><input placeholder="Header Name" @bind="newreqheader" type="text" class="form-control" id="newreqheader" /></td>
+                                                <td><input placeholder="Header Content" @bind="@newreqcontent" type="text" class="form-control" id="newreqcontent" /></td>
+                                                <td>
+                                                    <button @onclick="() => AddRequestHeaderModal(newreqheader, newreqcontent)" class="btn btn-primary-narrow">Add</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>HTTP Response Headers:</td>
+                            <td>
+                                <div class="form-group-medium">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Header Name       </th>
+                                                <th>Header Content    </th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var s in service.ChannelObject.HTTPResponseHeaders)
+                                            {
+                                                <tr>
+                                                    <td>@s.Key</td>
+                                                    <td>@s.Value</td>
+                                                    <td>
+                                                        <button @onclick="() => EditResponseHeaderModal(s.Key, s.Value)" class="btn btn-primary-narrow">Edit</button>
+                                                        <button @onclick="() => DeleteResponseHeaderModal(s.Key, s.Value)" class="btn btn-secondary-narrow">Delete</button>
+                                                    </td>
+
+                                                </tr>
+                                            }
+                                            <tr>
+                                                <td><input placeholder="Header Name" @bind="newresheader" type="text" class="form-control" id="newresheader" /></td>
+                                                <td><input placeholder="Header Content" @bind="@newrescontent" type="text" class="form-control" id="newrescontent" /></td>
+                                                <td>
+                                                    <button @onclick="() => AddResponseHeaderModal(newresheader, newrescontent)" class="btn btn-primary-narrow">Add</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    <tr>
+                        <td>Request Content:</td>
+                        <td><textarea contenteditable="true" placeholder="Sample content sent by the implant" @bind="@service.ChannelObject.RequestContent" type="text" class="form-control-large" id="profile.ChannelObject.RequestContent" /></td>
+                    </tr>
+                    <tr>
+                        <td>Response Content:</td>
+                        <td><textarea contenteditable="true" placeholder="Sample content sent by the service" @bind="@service.ChannelObject.ResponseContent" type="text" class="form-control-large" id="profile.ChannelObject.ResponseContent" /></td>
+                    </tr>
+                    <tr>
+                        <td>Response Error:</td>
+                        <td><textarea contenteditable="true" placeholder="Sample content sent by the service" @bind="@service.ChannelObject.ResponseError" type="text" class="form-control-large" id="profile.ChannelObject.ResponseError" /></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <button @onclick="SubmitForm" class="btn btn-primary">OK</button>
+            <button @onclick="Cancel" class="btn btn-secondary">Cancel</button>
+
+        </div>
+
+
+    </div>
+}
+
+@code {
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; }
+    [CascadingParameter] public IModalService Modal { get; set; }
+
+    [Parameter] public Boolean update { get; set; }
+    [Parameter] public string serviceId { get; set; }
+    private Profile profile { get; set; }
+    private Service service { get; set; }
+    private Dictionary<String, Profile> profiles;
+
+    // first form parameters
+    private string serviceProfileId { get; set; }
+    private string serviceName { get; set; }
+
+    private string[] channelTypes = Common.channelTypes;
+
+    // Request/Response Headers' variables
+    private string newreqheader { get; set; }
+    private string newreqcontent { get; set; }
+    private string newresheader { get; set; }
+    private string newrescontent { get; set; }
+
+    async Task GenerateEmptyService(String serviceName, String serviceProfileId)
+    {
+        Profile templateprofile = await PM.GetProfile(serviceProfileId);
+        service = SM.EmptyService(serviceName, templateprofile);
+        update = true;
+    }
+
+    async Task<Boolean> AddService()
+    {
+        bool result = false;
+        result = await SM.AddService(service);
+        return result;
+    }
+
+    async Task<Boolean> UpdateService()
+    {
+        return await SM.UpdateService(service);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        profiles = await PM.GetProfiles();
+        serviceProfileId = profiles.FirstOrDefault().Key;
+
+        if (!string.IsNullOrWhiteSpace(serviceId))
+        {
+            service = await SM.GetService(serviceId);
+            update = true;
+        }
+        else
+        {
+            BlazoredModal.SetTitle("Service Create");
+            update = false;
+        }
+    }
+
+    async Task SubmitForm()
+    {
+        // update the Protocol before adding or updating
+        service.ChannelObject.Protocol = service.ChannelType;
+
+        Boolean result;
+        if (update)
+        {
+            result = await SM.UpdateService(service);
+        }
+        {
+            result = await SM.AddService(service);
+        }
+        await BlazoredModal.CloseAsync(ModalResult.Ok(result));
+    }
+
+    async Task Cancel() => await BlazoredModal.CancelAsync();
+
+    Boolean AddRequestHeaderModal(string reqheader, string reqheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(reqheader))
+        {
+            var result = service.ChannelObject.AddHTTPRequestHeader(reqheader, reqheadercontent);
+
+            if (!result)
+            {
+
+                DisplayMessage(reqheader + " couldn't be added");
+
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    Boolean EditRequestHeaderModal(string reqheader, string reqheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(reqheader))
+        {
+            var result = service.ChannelObject.EditHTTPRequestHeader(reqheader, reqheadercontent);
+
+            if (!result)
+            {
+
+                DisplayMessage(reqheader + " couldn't be updated");
+
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    Boolean DeleteRequestHeaderModal(string reqheader, string reqheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(reqheader))
+        {
+            var result = service.ChannelObject.DeleteHTTPRequestHeader(reqheader, reqheadercontent);
+
+            if (result)
+            {
+                DisplayMessage(reqheader + " deleted");
+            }
+            else
+            {
+                DisplayMessage(reqheader + " couldn't be deleted");
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    Boolean AddResponseHeaderModal(string resheader, string resheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(resheader))
+        {
+            var result = service.ChannelObject.AddHTTPResponseHeader(resheader, resheadercontent);
+
+            if (!result)
+            {
+                DisplayMessage(resheader + " couldn't be added");
+
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    Boolean EditResponseHeaderModal(string resheader, string resheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(resheader))
+        {
+            var result = service.ChannelObject.EditHTTPResponseHeader(resheader, resheadercontent);
+
+            if (!result)
+            {
+                DisplayMessage(resheader + " couldn't be updated");
+
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    Boolean DeleteResponseHeaderModal(string resheader, string resheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(resheader))
+        {
+            var result = service.ChannelObject.DeleteHTTPResponseHeader(resheader, resheadercontent);
+
+            if (result)
+            {
+                DisplayMessage(resheader + " deleted successfully.");
+            }
+            else
+            {
+                DisplayMessage(resheader + " couldn't be deleted");
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    void DisplayMessage(String _message)
+    {
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(YesNoPrompt.Message), _message);
+        var dialogMessage = Modal.Show<DisplayMessage>("", parameters);
+    }
+
+}

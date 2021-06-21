@@ -1,0 +1,18 @@
+    public class Configuration
+    {
+        public string ID { get; set; }
+        public string PROTOCOL { get; set; }
+        public string HOST { get; set; }
+        public string PORT { get; set; }
+        public string C2URI { get; set; }
+        public string INTERVAL { get; set; }
+        public string JITTER { get; set; }
+        public string SESSION_KEY { get; set; }
+        public string SESSION_IV { get; set; }
+        public string REQUEST { get; set; }
+        public string REQUESTMETHOD { get; set; }
+        public string BINARY { get; set; }
+        public string COOKIES { get; set; }
+        public string HTTPHEADERS { get; set; }
+        public string HTTPUA { get; set; }
+    }

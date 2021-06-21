@@ -1,0 +1,172 @@
+﻿@page "/ig_service_selection"
+
+@using Tehsat
+@inject ServiceManagement SM
+@inject ImplantManagement IM
+
+<div class="blazored-modal-scrollable">
+    <div class="form-group-large">
+        <table class="table">
+            <tbody>
+                <tr>
+                    <td>Implant ID: </td>
+                    <td>@implantgenerated.Id</td>
+                </tr>
+                <tr>
+                    <td>Implant Name: </td>
+                    <td><input placeholder="Name" @bind="@implantgenerated.Name" type="text" class="form-control" id="implantgeneratedName" /></td>
+                </tr>
+                <tr>
+                    <td>Description: </td>
+                    <td><input placeholder="Description" @bind="@implantgenerated.Description" type="text" class="form-control" id="implantgeneratedDescription" /></td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <div class="form-group-small">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>Service Name        </th>
+                                        <th>Service Profile     </th>
+                                        <th>Channel Type        </th>
+                                    </tr>
+                                </thead>
+                                @foreach (var s in services)
+                                {
+                                    
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                @if (@Channels.ContainsKey(s.Value.Id))
+                                                {
+                                                    <input checked type="checkbox" id="false" class="form-control" 
+                                                           @onchange="@((ChangeEventArgs __e) => ChannelUpdate((bool)__e.Value, @s.Value))" />
+                                                }
+                                                else
+                                                {
+                                                    <input type="checkbox" id="false" class="form-control" 
+                                                    @onchange="@((ChangeEventArgs __e) => ChannelUpdate((bool)__e.Value, @s.Value))" />
+                                                }
+
+                                            </td>
+                                            <td>@s.Value.Name</td>
+                                            <td>@s.Value.Profile.Name</td>
+                                            <td>@s.Value.ChannelType</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4">
+                                                @if (@Channels.ContainsKey(@s.Value.Id))
+                                                {
+                                                    <div class="form-group-small">
+                                                        <table class="table">
+                                                            <tr>
+                                                                <td>Host</td>
+                                                                <td colspan="3"><input placeholder="Domain or IP Address" @bind="@Channels[@s.Value.Id].Host" type="text" class="form-control" id="@Channels[@s.Value.Id].Host" /></td>
+                                                                <td>Port</td>
+                                                                <td><input placeholder="Port" @bind="@Channels[@s.Value.Id].Port" type="text" class="form-control" id="@Channels[@s.Value.Id].Port" /></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>TLS</td>
+                                                                <td><input @bind="@Channels[@s.Value.Id].TLS" type="checkbox" id="@Channels[@s.Value.Id].TLS" /></td>
+                                                                <td>Update Interval</td>
+                                                                <td><input placeholder="Interval" @bind="@Channels[@s.Value.Id].Interval" type="text" class="form-control" id="@Channels[@s.Value.Id].Interval" /></td>
+                                                                <td>Jitter (%)</td>
+                                                                <td><input placeholder="Jitter" @bind="@Channels[@s.Value.Id].Jitter" type="text" class="form-control" id="@Channels[@s.Value.Id].Jitter" /></td>
+                                                            </tr>
+                                                        </table>
+                                                    </div>
+                                                }
+                                            </td>
+                                        </tr>
+
+                                    </tbody>
+                                }
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+
+
+            </tbody>
+        </table>
+
+        <button @onclick="SubmitForm" class="btn btn-primary">OK</button>
+        <button @onclick="Cancel" class="btn btn-secondary">Cancel</button>
+
+    </div>
+
+
+</div>
+
+@code {
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; }
+    [CascadingParameter] public IModalService Modal { get; set; }
+
+    [Parameter] public Boolean update { get; set; }
+    [Parameter] public string igid { get; set; }
+    private ImplantGenerated implantgenerated { get; set; }
+    private Dictionary<String, Channel> Channels { get; set; }
+    private Dictionary<String, Service> services;
+
+
+    bool ChannelUpdate(bool col, Service s)
+    {
+        if (! col && Channels.ContainsKey(s.Id))
+        {
+            Channels.Remove(s.Id);
+        }
+        else
+        {
+            Channels.TryAdd(s.Id, s.ChannelObject.Clone());
+        }
+        return col;
+    }
+
+    async Task<Boolean> AddImplantGenerated()
+    {
+        return await IM.AddImplantGenerated(implantgenerated);
+    }
+
+    async Task<Boolean> UpdateImplantGenerated()
+    {
+        return await IM.UpdateImplantGenerated(implantgenerated);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        services = await SM.GetServices();
+
+        if (!string.IsNullOrWhiteSpace(igid))
+        {
+            implantgenerated = await IM.GetImplantGenerated(igid);
+            update = true;
+            Channels = implantgenerated.Channels;
+
+        }
+        else
+        {
+            BlazoredModal.SetTitle("Implant Generation (Service Selection)");
+            implantgenerated = IM.EmptyImplantGenerated();
+            update = false;
+            Channels = new Dictionary<String, Channel>();
+        }
+    }
+
+    async Task SubmitForm()
+    {
+        Boolean result;
+        implantgenerated.Channels = Channels;
+
+        if (update)
+        {
+            result = await IM.UpdateImplantGenerated(implantgenerated);
+        }
+        {
+            result = await IM.AddImplantGenerated(implantgenerated);
+        }
+        await BlazoredModal.CloseAsync(ModalResult.Ok(result));
+    }
+
+    async Task Cancel() => await BlazoredModal.CancelAsync();
+}

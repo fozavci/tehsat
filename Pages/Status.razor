@@ -1,0 +1,199 @@
+﻿@page "/status"
+
+@using Tehsat
+@inject ServiceManagement SM
+@inject ProfileManagement PM
+@inject ServiceSocketManagement SSM
+@inject NavigationManager NavigationManager;
+
+<h1>Status</h1>
+
+<p> </p>
+
+
+@if (services == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th> </th>
+                <th>Name              </th>
+                <th>Status            </th>
+                <th>Profile           </th>
+                <th>Channel Type      </th>
+                <th>Channel Port      </th>
+                <th>Description       </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in services)
+            {
+                <tr class="lightgray">
+                    <td>
+
+                        @if (s.Value.SocketObject.Status)
+                        {
+                            <button @onclick="() => StopServiceModal(s.Value)" class="btn btn-secondary-narrow"><i class="oi oi-media-stop"></i></button>
+                            <button @onclick="() => RestartServiceModal(s.Value)" class="btn btn-secondary-narrow"><i class="oi oi-loop-circular"></i></button>
+
+                        }
+                        else
+                        {
+                            <button @onclick="() => StartServiceModal(s.Value)" class="btn btn-primary-narrow"><i class="oi oi-media-play"></i></button>
+
+                        }
+                    </td>
+
+                    <td>@s.Value.Name</td>
+                    <td>@s.Value.SocketObject.Status</td>
+                    <td>@s.Value.Profile.Name</td>
+                    <td>@s.Value.ChannelType</td>
+                    <td>@s.Value.ChannelObject.Port</td>
+                    <td>@s.Value.Description</td>
+                </tr>
+                @if (s.Value.SocketObject.Implants.Count > 0)
+                {
+                    <tr>
+                        <td></td>
+                        <td colspan="6">
+                            <div class="form-group-small">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Implant ID        </th>
+                                            <th>Implant Endpoint  </th>
+                                            <th>Status            </th>
+                                            <th>First Seen         </th>
+                                            <th>Last Seen         </th>
+                                        </tr>
+                                    </thead>
+                                    @foreach (var i in s.Value.SocketObject.Implants)
+                                    {
+                                        <tbody>
+                                            <tr>
+                                                <td>@i.Value.Id</td>
+                                                <td>@i.Value.Endpoint</td>
+                                                <td>@i.Value.Status</td>
+                                                <td>@i.Value.FirstSeen</td>
+                                                <td>@i.Value.LastSeen</td>
+                                            </tr>
+                                        </tbody>
+
+                                    }
+                                </table>
+                            </div>
+                        </td>
+
+                    </tr>
+                }
+
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter] public IModalService Modal { get; set; }
+    private Dictionary<String, Service> services;
+    private Dictionary<String, Profile> profiles;
+    private string _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        profiles = await PM.GetProfiles();
+        services = await SM.GetServices();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        services = await SM.GetServices();
+    }
+
+
+    void StartServiceModal(Service s)
+    {
+        s.SocketObject.Start();
+        DisplayMessage("The service successfully started.");
+        NavigationManager.NavigateTo("status", true);
+
+    }
+
+    async Task RestartServiceModal(Service s)
+    {
+        if (s.SocketObject.Status)
+        {
+            _message = "Are you sure you want to restart " + s.Name + " ?";
+
+            var parameters = new ModalParameters();
+            parameters.Add(nameof(YesNoPrompt.Message), _message);
+
+            var dialogConfirmation = Modal.Show<YesNoPrompt>("Restarting Service", parameters);
+            var result = await dialogConfirmation.Result;
+
+            if (!result.Cancelled)
+            {
+                s.SocketObject.Stop();
+                s.SocketObject.Start();
+                DisplayMessage("The service is successfully restarted.");
+            }
+            else
+            {
+                DisplayMessage("The service is not running.");
+            }
+            NavigationManager.NavigateTo("status", true);
+        }
+
+    }
+    async Task StopServiceModal(Service s)
+    {
+        _message = "Are you sure you want to stop " + s.Name + " ?";
+
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(YesNoPrompt.Message), _message);
+
+        var dialogConfirmation = Modal.Show<YesNoPrompt>("Stopping Service", parameters);
+        var result = await dialogConfirmation.Result;
+
+        if (!result.Cancelled)
+        {
+            if (s.SocketObject.Status)
+            {
+                bool r = s.SocketObject.Stop();
+                if (r)
+                {
+                    DisplayMessage("The service stopped.");
+                    NavigationManager.NavigateTo("status", true);
+                }
+                else
+                {
+                    DisplayMessage("Not implemented.");
+                    NavigationManager.NavigateTo("status", true);
+                }
+            }
+            else
+            {
+                DisplayMessage("The service is not running.");
+            }
+        }
+
+    }
+
+    void DisplayMessage(String _message)
+    {
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(YesNoPrompt.Message), _message);
+        var dialogMessage = Modal.Show<DisplayMessage>("", parameters);
+    }
+
+}
+
+
+
+
+
+
+

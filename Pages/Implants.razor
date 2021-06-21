@@ -1,0 +1,185 @@
+﻿@page "/implants"
+
+@using Tehsat
+@inject ImplantManagement IM
+@inject ServiceManagement SM
+@inject ProfileManagement PM
+
+<h1>Implants</h1>
+
+<p>
+    Implants can be generated for single or multiple C2 services.<br />
+    Generated implants can be downloaded or served.
+</p>
+<br />
+<button @onclick="GenerateSingleImplantModal" class="btn btn-primary">Generate Single Implant</button>
+<button @onclick="GenerateBulkImplantModal" class="btn btn-primary">Generate Bulk Implants</button>
+<p> </p>
+
+
+@if (implantsgenerated == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Management </th>
+                <th>Provide </th>
+                <th>ID              </th>
+                <th>Name            </th>
+                <th>Profiles        </th>
+                <th>URIs            </th>
+                <th>Description     </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var i in implantsgenerated)
+            {
+                <tr>
+                    <td>
+                        <button @onclick="() => EditImplantsModal(i.Key, i.Value)" class="btn btn-primary-narrow"><i class="oi oi-pencil"></i></button>
+                        <button @onclick="() => DeleteImplantsModal(i.Key, i.Value)" class="btn btn-secondary-narrow"><i class="oi oi-trash"></i></button>
+                    </td>
+
+                    <td>
+                        <button @onclick="() => InfoImplantModal(i.Key, i.Value)" class="btn btn-secondary-narrow"><i class="oi oi-info"></i></button>
+                        <button @onclick="() => DownloadImplantModal(i.Key, i.Value)" class="btn btn-primary-narrow"><i class="oi oi-cloud-download"></i></button>
+                        <button @onclick="() => ServeImplantModal(i.Key, i.Value)" class="btn btn-secondary-narrow"><i class="oi oi-cloudy"></i></button>
+                    </td>
+
+                    <td>@i.Value.Id</td>
+                    <td>@i.Value.Name</td>
+                    <td>
+                        @foreach (var c in i.Value.Channels)
+                        {
+                            string curi = @PM.GetProfileName(c.Value.GetUri());
+                            <p>@curi</p>
+                        }
+                    </td>
+                    <td>
+                        @foreach (var c in i.Value.Channels)
+                        {
+                            <p>@c.Value.Protocol</p>
+                        }
+                    </td>
+                    <td>@i.Value.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter] public IModalService Modal { get; set; }
+    private Dictionary<String, ImplantGenerated> implantsgenerated;
+    private Dictionary<String, Service> services;
+
+    private string _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        implantsgenerated = await IM.GetImplantsGenerated();
+        services = await SM.GetServices();
+
+    }
+
+    async Task GenerateSingleImplantModal()
+    {
+        @if (services == null)
+        {
+            DisplayMessage("No suitable service found.");
+        }
+        else
+        {
+            var options = new ModalOptions { DisableBackgroundCancel = true };
+            var parameters = new ModalParameters();
+
+
+            var igAddForm = Modal.Show<IG_Service_Selection>("Implant Generation (Service Selection)", parameters, options);
+            var result = await igAddForm.Result;
+
+            if (!result.Cancelled)
+            {
+                DisplayMessage("The implant is successfully added.");
+            }
+        }
+    }
+    void GenerateBulkImplantModal()
+    { }
+
+    void InfoImplantModal(String id, ImplantGenerated i)
+    { }
+
+    async Task DownloadImplantModal(String id, ImplantGenerated i)
+    {
+        ImplantCode ic = new ImplantCode("CSharp", i);
+        string ic_source = ic.GenerateCSharpSourceCode();
+
+        var options = new ModalOptions { DisableBackgroundCancel = true };
+        var parameters = new ModalParameters();
+
+        parameters.Add(nameof(DisplayCode.Title), id);
+        parameters.Add(nameof(DisplayCode.Code), ic_source);
+
+        var iCode = Modal.Show<DisplayCode>("Implant Source Code", parameters, options);
+        var result = await iCode.Result;
+
+    }
+
+    void ServeImplantModal(String id, ImplantGenerated i)
+    { }
+
+    async Task EditImplantsModal(String id, ImplantGenerated i)
+    {
+        var options = new ModalOptions { DisableBackgroundCancel = true };
+        var parameters = new ModalParameters();
+
+        parameters.Add(nameof(IG_Service_Selection.igid), id);
+        parameters.Add(nameof(IG_Service_Selection.update), true);
+
+        var igUpdForm = Modal.Show<IG_Service_Selection>("Implant Update (Service Selection)", parameters, options);
+        var result = await igUpdForm.Result;
+
+
+        if (!result.Cancelled)
+        {
+            DisplayMessage("The profile successfully updated.");
+        }
+    }
+
+    async Task DeleteImplantsModal(String id, ImplantGenerated i)
+    {
+        _message = "Are you sure you want to delete " + i.Name + " ?";
+
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(YesNoPrompt.Message), _message);
+
+        var dialogConfirmation = Modal.Show<YesNoPrompt>("Deleting Implant", parameters);
+        var result = await dialogConfirmation.Result;
+
+        if (!result.Cancelled)
+        {
+            bool r = await IM.DeleteImplantGenerated(id);
+
+            if (r)
+            {
+                DisplayMessage("The implant " + i.Name + " successfully deleted.");
+            }
+            else
+            {
+                DisplayMessage("The implant " + i.Name + " couldn't be deleted.");
+            }
+        }
+    }
+
+    void DisplayMessage(String _message)
+    {
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(YesNoPrompt.Message), _message);
+        var dialogMessage = Modal.Show<DisplayMessage>("", parameters);
+    }
+
+}

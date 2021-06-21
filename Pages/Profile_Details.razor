@@ -1,0 +1,463 @@
+﻿@page "/profile_details"
+
+@using Tehsat
+@inject ProfileManagement PM
+
+<div class="blazored-modal-scrollable">
+    <div class="form-group-large">
+        <table class="table">
+            <tbody>
+                <tr>
+                    <td>Profile Name: </td>
+                    <td><input placeholder="Name" @bind="@profile.Name" type="text" class="form-control" id="profileName" /></td>
+                </tr>
+                <tr>
+                    <td>Channel Type: </td>
+                    <td>
+                        <select value="@profile.ChannelType" class="form-control"
+                                @onchange="@((ChangeEventArgs __e) => @profile.ChannelType = __e.Value.ToString())">
+                            @foreach (var p in channelTypes)
+                            {
+                                <option value="@p">@p</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Profile Description: </td>
+                    <td><input placeholder="Description" @bind="@profile.Description" type="text" class="form-control" id="profileDescription" /></td>
+                </tr>
+                <tr>
+                    <td>Port: </td>
+                    <td><input placeholder="@profile.ChannelObject.Port" @bind="@profile.ChannelObject.Port" type="text" class="form-control" id="profile.ChannelObject.Port" /></td>
+                </tr>
+                <tr>
+                    <td>TLS: </td>
+                    <td>
+                        <input @bind="@profile.ChannelObject.TLS" type="checkbox" id="profile.ChannelObject.TLS" />
+                    </td>
+                </tr>
+                
+                @if (@profile.ChannelObject.TLS)
+                { 
+                    <tr>
+                    <td>Certificate Path: </td>
+                    <td><input placeholder="Cert/tehsat.pfx" @bind="@profile.ChannelObject.TLSCert" type="text" class="form-control" id="profile.ChannelObject.TLSCert" /> </td>
+                    </tr>
+                    <tr>
+                    <td>Certificate Password: </td>
+                    <td><input placeholder="123456" @bind="@profile.ChannelObject.TLSCertPassword" type="text" class="form-control" id="profile.ChannelObject.TLSCertPassword" /> </td>
+                    </tr>
+                }
+                <tr>
+
+                    <td>Update Interval: </td>
+                    <td><input placeholder="@profile.ChannelObject.Interval" @bind="@profile.ChannelObject.Interval" type="text" class="form-control" id="profile.ChannelObject.Interval" /> </td>
+                </tr>
+                <tr>
+                    <td>Jitter (Randomisation %): </td>
+                    <td><input placeholder="@profile.ChannelObject.Jitter" @bind="@profile.ChannelObject.Jitter" type="text" class="form-control" id="profile.ChannelObject.Jitter" /> </td>
+
+                </tr>
+
+
+                @if (profile.ChannelType.Contains("HTTP"))
+                {
+                    <tr>
+                        <td>HTTP URI:</td>
+                        <td><input placeholder="/api/1234" @bind="@profile.ChannelObject.HTTPURI" type="text" class="form-control" id="profile.ChannelObject.HTTPURI" /></td>
+                    </tr>
+                    <tr>
+                        <td>HTTP Request Type:</td>
+                        <td><input placeholder="GET" @bind="@profile.ChannelObject.HTTPRequestMethod" type="text" class="form-control" id="profile.ChannelObject.HTTPRequestMethod" /></td>
+                    </tr>
+                    <tr>
+                        <td>HTTP User Agent:</td>
+                        <td><input placeholder="Mozilla 5.0" @bind="@profile.ChannelObject.HTTPUserAgent" type="text" class="form-control" id="profile.ChannelObject.HTTPUserAgent" /></td>
+                    </tr>
+                    <tr>
+                        <td>Cookies:</td>
+                        <td>
+                            <div class="form-group-medium">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Cookie Name       </th>
+                                            <th>Cookie Value   </th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var s in profile.ChannelObject.Cookies)
+                                        {
+                                            <tr>
+                                                <td>@s.Key</td>
+                                                <td>@s.Value</td>
+                                                <td>
+                                                    <button @onclick="() => EditCookieModal(s.Key,s.Value)" class="btn btn-primary-narrow">Edit</button>
+                                                    <button @onclick="() => DeleteCookieModal(s.Key,s.Value)" class="btn btn-secondary-narrow">Delete</button>
+                                                </td>
+
+                                            </tr>
+                                        }
+                                        <tr>
+                                            <td><input placeholder="Cookie Name" @bind="@newcookie" type="text" class="form-control" id="newcookie" /></td>
+                                            <td><input placeholder="Cookie Value" @bind="@newcookieval" type="text" class="form-control" id="newcookieval" /></td>
+                                            <td>
+                                                <button @onclick="() => AddCookieModal(newcookie, newcookieval)" class="btn btn-primary-narrow">Add</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>HTTP Request Headers:</td>
+                        <td>
+                            <div class="form-group-medium">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Header Name       </th>
+                                            <th>Header Content    </th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var s in profile.ChannelObject.HTTPRequestHeaders)
+                                        {
+                                            <tr>
+                                                <td>@s.Key</td>
+                                                <td>@s.Value</td>
+                                                <td>
+                                                    <button @onclick="() => EditRequestHeaderModal(s.Key,s.Value)" class="btn btn-primary-narrow">Edit</button>
+                                                    <button @onclick="() => DeleteRequestHeaderModal(s.Key,s.Value)" class="btn btn-secondary-narrow">Delete</button>
+                                                </td>
+
+                                            </tr>
+                                        }
+                                        <tr>
+                                            <td><input placeholder="Header Name" @bind="newreqheader" type="text" class="form-control" id="newreqheader" /></td>
+                                            <td><input placeholder="Header Content" @bind="@newreqcontent" type="text" class="form-control" id="newreqcontent" /></td>
+                                            <td>
+                                                <button @onclick="() => AddRequestHeaderModal(newreqheader,newreqcontent)" class="btn btn-primary-narrow">Add</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>HTTP Response Headers:</td>
+                        <td>
+                            <div class="form-group-medium">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Header Name       </th>
+                                            <th>Header Content    </th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var s in profile.ChannelObject.HTTPResponseHeaders)
+                                        {
+                                            <tr>
+                                                <td>@s.Key</td>
+                                                <td>@s.Value</td>
+                                                <td>
+                                                    <button @onclick="() => EditResponseHeaderModal(s.Key,s.Value)" class="btn btn-primary-narrow">Edit</button>
+                                                    <button @onclick="() => DeleteResponseHeaderModal(s.Key,s.Value)" class="btn btn-secondary-narrow">Delete</button>
+                                                </td>
+
+                                            </tr>
+                                        }
+                                        <tr>
+                                            <td><input placeholder="Header Name" @bind="newresheader" type="text" class="form-control" id="newresheader" /></td>
+                                            <td><input placeholder="Header Content" @bind="@newrescontent" type="text" class="form-control" id="newrescontent" /></td>
+                                            <td>
+                                                <button @onclick="() => AddResponseHeaderModal(newresheader,newrescontent)" class="btn btn-primary-narrow">Add</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td>Request Content:</td>
+                    <td><textarea contenteditable="true" placeholder="Sample content sent by the implant" @bind="@profile.ChannelObject.RequestContent" type="text" class="form-control-large" id="profile.ChannelObject.RequestContent" /></td>
+                </tr>
+                <tr>
+                    <td>Response Content:</td>
+                    <td><textarea contenteditable="true" placeholder="Sample content sent by the service" @bind="@profile.ChannelObject.ResponseContent" type="text" class="form-control-large" id="profile.ChannelObject.ResponseContent" /></td>
+                </tr>
+                <tr>
+                    <td>Response Error:</td>
+                    <td><textarea contenteditable="true" placeholder="Sample error message for unmatched requests" @bind="@profile.ChannelObject.ResponseError" type="text" class="form-control-large" id="profile.ChannelObject.ResponseContent" /></td>
+                </tr>
+
+            </tbody>
+        </table>
+
+        <button @onclick="SubmitForm" class="btn btn-primary">OK</button>
+        <button @onclick="Cancel" class="btn btn-secondary">Cancel</button>
+
+    </div>
+
+
+</div>
+
+@code {
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; }
+    [CascadingParameter] public IModalService Modal { get; set; }
+
+    [Parameter] public Boolean update { get; set; }
+    [Parameter] public string profileId { get; set; }
+    private Profile profile { get; set; }
+
+
+    private string[] channelTypes = Common.channelTypes;
+
+    // Request/Response Headers' variables
+    private string newreqheader { get; set; }
+    private string newreqcontent { get; set; }
+    private string newresheader { get; set; }
+    private string newrescontent { get; set; }
+
+    // Cookies variables
+    private string newcookie { get; set; }
+    private string newcookieval { get; set; }
+
+    async Task<Boolean> AddProfile()
+    {
+        return await PM.AddProfile(profile);
+    }
+
+    async Task<Boolean> UpdateProfile()
+    {
+        return await PM.UpdateProfile(profile);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        if (!string.IsNullOrWhiteSpace(profileId))
+        {
+            profile = await PM.GetProfile(profileId);
+            update = true;
+        }
+        else
+        {
+            BlazoredModal.SetTitle("Profile Create");
+            profile = PM.EmptyProfile();
+            update = false;
+        }
+
+    }
+
+    async Task SubmitForm()
+    {
+        Boolean result;
+        if (update)
+        {
+            result = await PM.UpdateProfile(profile);
+        }
+        {
+            result = await PM.AddProfile(profile);
+        }
+        await BlazoredModal.CloseAsync(ModalResult.Ok(result));
+    }
+
+    async Task Cancel() => await BlazoredModal.CancelAsync();
+
+    Boolean AddCookieModal(string c, string ccontent)
+    {
+        if (!string.IsNullOrWhiteSpace(c))
+        {
+            var result = profile.ChannelObject.AddCookie(c, ccontent);
+
+            if (!result)
+            {
+
+                DisplayMessage(c + " couldn't be added");
+
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    Boolean EditCookieModal(string c, string ccontent)
+    {
+        if (!string.IsNullOrWhiteSpace(c))
+        {
+            var result = profile.ChannelObject.EditHTTPRequestHeader(c, ccontent);
+
+            if (!result)
+            {
+
+                DisplayMessage(c + " couldn't be updated");
+
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    Boolean DeleteCookieModal(string c, string ccontent)
+    {
+        if (!string.IsNullOrWhiteSpace(c))
+        {
+            var result = profile.ChannelObject.DeleteHTTPRequestHeader(c, ccontent);
+
+            if (result)
+            {
+                DisplayMessage(c + " deleted");
+            }
+            else
+            {
+                DisplayMessage(c + " couldn't be deleted");
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+
+    Boolean AddRequestHeaderModal(string reqheader, string reqheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(reqheader))
+        {
+            var result = profile.ChannelObject.AddHTTPRequestHeader(reqheader, reqheadercontent);
+
+            if (!result)
+            {
+
+                DisplayMessage(reqheader + " couldn't be added");
+
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    Boolean EditRequestHeaderModal(string reqheader, string reqheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(reqheader))
+        {
+            var result = profile.ChannelObject.EditHTTPRequestHeader(reqheader, reqheadercontent);
+
+            if (!result)
+            {
+
+                DisplayMessage(reqheader + " couldn't be updated");
+
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    Boolean DeleteRequestHeaderModal(string reqheader, string reqheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(reqheader))
+        {
+            var result = profile.ChannelObject.DeleteHTTPRequestHeader(reqheader, reqheadercontent);
+
+            if (result)
+            {
+                DisplayMessage(reqheader + " deleted");
+            }
+            else
+            {
+                DisplayMessage(reqheader + " couldn't be deleted");
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    Boolean AddResponseHeaderModal(string resheader, string resheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(resheader))
+        {
+            var result = profile.ChannelObject.AddHTTPResponseHeader(resheader, resheadercontent);
+
+            if (!result)
+            {
+                DisplayMessage(resheader + " couldn't be added");
+
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    Boolean EditResponseHeaderModal(string resheader, string resheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(resheader))
+        {
+            var result = profile.ChannelObject.EditHTTPResponseHeader(resheader, resheadercontent);
+
+            if (!result)
+            {
+                DisplayMessage(resheader + " couldn't be updated");
+
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    Boolean DeleteResponseHeaderModal(string resheader, string resheadercontent)
+    {
+        if (!string.IsNullOrWhiteSpace(resheader))
+        {
+            var result = profile.ChannelObject.DeleteHTTPResponseHeader(resheader, resheadercontent);
+
+            if (result)
+            {
+                DisplayMessage(resheader + " deleted successfully.");
+            }
+            else
+            {
+                DisplayMessage(resheader + " couldn't be deleted");
+            }
+            return result;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    void DisplayMessage(String _message)
+    {
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(YesNoPrompt.Message), _message);
+        var dialogMessage = Modal.Show<DisplayMessage>("", parameters);
+    }
+
+}

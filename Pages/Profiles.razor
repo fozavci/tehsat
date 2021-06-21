@@ -1,0 +1,148 @@
+﻿@page "/profiles"
+
+@using Tehsat
+@inject ProfileManagement PM
+
+<h1>Communication Profiles </h1>
+<p> Profiles are used to generate services and work as templates.<br />
+    They are customisable to simulate the threat actor campaigns accurately.
+</p>
+<br />
+<button @onclick="AddProfileModal" class="btn btn-primary">Add New Profile</button>
+<button @onclick="ImportProfileModal" class="btn btn-primary">Import Profile</button>
+<button @onclick="ImportConfigurationModal" class="btn btn-primary">Import Profile Configuration</button>
+<button @onclick="ExportConfigurationModal" class="btn btn-primary">Export Profile Configuration</button>
+<p> </p>
+
+
+@if (profiles == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Management </th>
+                <th>Name              </th>
+                <th>TLS               </th>
+                <th>Type              </th>
+                <th>Used              </th>
+                <th>Description       </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in profiles)
+            {
+                <tr>
+                    <td>
+                        <button @onclick="() => EditProfileModal(p.Key, p.Value)" class="btn btn-primary-narrow"><i class="oi oi-pencil"></i></button>
+                        <button @onclick="() => DeleteProfileModal(p.Key, p.Value)" class="btn btn-secondary-narrow"><i class="oi oi-trash"></i></button>
+                    </td>
+
+                    <td>@p.Value.Name</td>
+                    <td>@p.Value.ChannelObject.TLS</td>
+                    <td>@p.Value.ChannelType</td>
+                    <td>@p.Value.Used</td>
+                    <td>@p.Value.Description</td>
+                 </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter] public IModalService Modal { get; set; }
+    private Dictionary<String, Profile> profiles;
+    private string _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        profiles = await PM.GetProfiles();
+    }
+
+    void ImportConfigurationModal()
+    { }
+    void ExportConfigurationModal()
+    { }
+    void ImportProfileModal()
+    { }
+
+    async Task AddProfileModal()
+    {
+        var options = new ModalOptions { DisableBackgroundCancel = true };
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(Profile_Details.update), false);
+
+        var profileForm = Modal.Show<Profile_Details>("", parameters, options);
+        var result = await profileForm.Result;
+
+        if (!result.Cancelled)
+        {
+            DisplayMessage("The profile successfully added.");
+        }
+    }
+
+    async Task EditProfileModal(String id, Profile p)
+    {
+        var options = new ModalOptions { DisableBackgroundCancel = true };
+        var parameters = new ModalParameters();
+
+        parameters.Add(nameof(Profile_Details.profileId), id);
+        parameters.Add(nameof(Profile_Details.update), true);
+
+        var profileEditForm = Modal.Show<Profile_Details>("Profile Update", parameters, options);
+        var result = await profileEditForm.Result;
+
+        if (!result.Cancelled)
+        {
+            DisplayMessage("The profile successfully updated.");
+        }
+    }
+
+    async Task StartProfileModal()
+    {
+        profiles = await PM.GetProfiles();
+    }
+    async Task RestartProfileModal()
+    {
+        profiles = await PM.GetProfiles();
+    }
+    async Task StopProfileModal()
+    {
+        profiles = await PM.GetProfiles();
+    }
+    async Task DeleteProfileModal(String id, Profile p)
+    {
+        _message = "Are you sure you want to delete " + p.Name + " ?";
+
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(YesNoPrompt.Message), _message);
+
+        var dialogConfirmation = Modal.Show<YesNoPrompt>("Deleting Service", parameters);
+        var result = await dialogConfirmation.Result;
+
+        if (!result.Cancelled)
+        {
+            bool r = await PM.DeleteProfile(id);
+
+            if (r)
+            {
+                DisplayMessage("The service " + p.Name + " successfully deleted.");
+            }
+            else
+            {
+                DisplayMessage("The service " + p.Name + " couldn't be deleted.");
+            }
+        }
+    }
+
+    void DisplayMessage(String _message)
+    {
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(YesNoPrompt.Message), _message);
+        var dialogMessage = Modal.Show<DisplayMessage>("", parameters);
+    }
+
+}

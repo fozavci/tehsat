@@ -1,0 +1,245 @@
+﻿@page "/services"
+
+@using Tehsat
+@inject ServiceManagement SM
+@inject ProfileManagement PM
+@inject ServiceSocketManagement SSM
+@inject NavigationManager NavigationManager;
+
+<h1>Command & Control Services</h1>
+<p>
+    Services are used to start listeners for the implants to connect. <br />
+    Each service may use a profile as a template to create channel options or settings.<br />
+    Based on the service channel and port selection, the services may share same service instances.
+</p>
+<br />
+<button @onclick="AddServiceModal" class="btn btn-primary">Add New Service</button>
+<button @onclick="ImportServiceModal" class="btn btn-primary">Import Service</button>
+<button @onclick="ImportConfigurationModal" class="btn btn-primary">Import Service Configuration</button>
+<button @onclick="ExportConfigurationModal" class="btn btn-primary">Export Service Configuration</button>
+<p> </p>
+
+
+@if (services == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Management</th>
+                <th>Name              </th>
+                <th>Status            </th>
+                <th>Profile           </th>
+                <th>Channel Type      </th>
+                <th>Channel Port      </th>
+                <th>Description       </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in services)
+            {
+                <tr>
+                    <td>
+
+                        <button @onclick="() => EditServiceModal(s.Key,s.Value)" class="btn btn-primary-narrow"><i class="oi oi-pencil"></i></button>
+                        <button @onclick="() => DeleteServiceModal(s.Key,s.Value)" class="btn btn-secondary-narrow"><i class="oi oi-trash"></i></button> &nbsp;
+                        @if (s.Value.SocketObject.Status) {
+                            <button @onclick="() => StopServiceModal(s.Value)" class="btn btn-secondary-narrow"><i class="oi oi-media-stop"></i></button>
+                            <button @onclick="() => RestartServiceModal(s.Value)" class="btn btn-secondary-narrow"><i class="oi oi-loop-circular"></i></button>
+
+                        }
+                        else {                        
+                            <button @onclick="() => StartServiceModal(s.Value)" class="btn btn-primary-narrow"><i class="oi oi-media-play"></i></button>
+
+                        }
+                    </td>
+
+                    <td>@s.Value.Name</td>
+                    <td>@s.Value.SocketObject.Status</td>
+                    <td>@s.Value.Profile.Name</td>
+                    <td>@s.Value.ChannelType</td>
+                    <td>@s.Value.ChannelObject.Port</td>
+                    <td>@s.Value.Description</td>
+
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter] public IModalService Modal { get; set; }
+    private Dictionary<String, Service> services;
+    private Dictionary<String, Profile> profiles;
+    private string _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        profiles = await PM.GetProfiles();
+        services = await SM.GetServices();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        services = await SM.GetServices();
+    }
+
+    void ImportConfigurationModal()
+    { }
+    void ExportConfigurationModal()
+    { }
+    void ImportServiceModal()
+    { }
+
+    async Task AddServiceModal()
+    {
+        if (profiles == null)
+        {
+            _message = "No profiles found. To add a new service, please add a profile first.";
+            DisplayMessage(_message);
+        }
+        else
+        {
+            var options = new ModalOptions { DisableBackgroundCancel = true };
+            var parameters = new ModalParameters();
+            parameters.Add(nameof(Service_Details.update), false);
+
+            var serviceForm = Modal.Show<Service_Details>("", parameters, options);
+            var result = await serviceForm.Result;
+
+            if (!result.Cancelled)
+            {
+                DisplayMessage("The service successfully added.");
+            }
+        }
+
+    }
+
+    async Task EditServiceModal(String id, Service p)
+    {
+        var options = new ModalOptions { DisableBackgroundCancel = true };
+        var parameters = new ModalParameters();
+
+        parameters.Add(nameof(Service_Details.serviceId), id);
+        parameters.Add(nameof(Service_Details.update), true);
+
+        var serviceEditForm = Modal.Show<Service_Details>("Service Update", parameters, options);
+        var result = await serviceEditForm.Result;
+
+        if (!result.Cancelled)
+        {
+            DisplayMessage("The service successfully updated.");
+        }
+    }
+
+    void StartServiceModal(Service s)
+    {
+        s.SocketObject.Start();
+        DisplayMessage("The service successfully started.");
+        NavigationManager.NavigateTo("services", true);
+
+    }
+
+    async Task RestartServiceModal(Service s)
+    {
+        if (s.SocketObject.Status)
+        {
+            _message = "Are you sure you want to restart " + s.Name + " ?";
+
+            var parameters = new ModalParameters();
+            parameters.Add(nameof(YesNoPrompt.Message), _message);
+
+            var dialogConfirmation = Modal.Show<YesNoPrompt>("Restarting Service", parameters);
+            var result = await dialogConfirmation.Result;
+
+            if (!result.Cancelled)
+            {
+                s.SocketObject.Stop();
+                s.SocketObject.Start();
+                DisplayMessage("The service is successfully restarted.");
+            }
+            else
+            {
+                DisplayMessage("The service is not running.");
+            }
+            NavigationManager.NavigateTo("services", true);
+        }
+
+    }
+    async Task StopServiceModal(Service s)
+    {
+        _message = "Are you sure you want to stop " + s.Name + " ?";
+
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(YesNoPrompt.Message), _message);
+
+        var dialogConfirmation = Modal.Show<YesNoPrompt>("Stopping Service", parameters);
+        var result = await dialogConfirmation.Result;
+
+        if (!result.Cancelled)
+        {
+            if (s.SocketObject.Status)
+            {
+                bool r = s.SocketObject.Stop();
+                if (r)
+                {
+                    DisplayMessage("The service stopped.");
+                    NavigationManager.NavigateTo("services", true);
+                }
+                else
+                {
+                    DisplayMessage("Not implemented.");
+                    NavigationManager.NavigateTo("services", true);
+                }
+            }
+            else
+            {
+                DisplayMessage("The service is not running.");
+            }
+        }
+
+    }
+    async Task DeleteServiceModal(String id, Service s)
+    {
+        _message = "Are you sure you want to delete " + s.Name + " ?";
+
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(YesNoPrompt.Message), _message);
+
+        var dialogConfirmation = Modal.Show<YesNoPrompt>("Deleting Service", parameters);
+        var result = await dialogConfirmation.Result;
+
+        if (!result.Cancelled)
+        {
+            bool r = await SM.DeleteService(id);
+
+            if (r)
+            {
+                DisplayMessage("The service " + s.Name + " successfully deleted.");
+            }
+            else
+            {
+                DisplayMessage("The service " + s.Name + " couldn't be deleted.");
+            }
+        }
+
+    }
+
+    void DisplayMessage(String _message)
+    {
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(YesNoPrompt.Message), _message);
+        var dialogMessage = Modal.Show<DisplayMessage>("", parameters);
+    }
+
+}
+
+
+
+
+
+
+

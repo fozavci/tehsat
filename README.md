@@ -1,4 +1,4 @@
-# Tehsat Malware Traffic Genetor
+# Tehsat Malware Traffic Generator
 
 Tehsat malware traffice generator is designed to provide a Proof of Concept implementation for detecting malware traffic using Cyber Data Analytics. The inspired projects, research, technologies and ideas are listed in "Simulating Malware Communications in Distributed Networks" in the <b>docs</b> folder. A brief demo video is available on YouTube to give a brief usage example. <br>
 

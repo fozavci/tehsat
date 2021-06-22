@@ -34,4 +34,4 @@ As I'm developing this tool in my free time, please expect delays and numerous b
 * Tehsat Malware Traffic Generator - IcedID Ransomware Traffic Simulation <br> https://youtu.be/JdfRUjIojCw
 
 ## Talks
-* Malware Traffic Generation to Improve Security Incident Detections - https://www.youtube.com/watch?v=c-dpHgBPckM
+* Malware Traffic Generation to Improve Security Incident Detections<br> https://www.youtube.com/watch?v=c-dpHgBPckM

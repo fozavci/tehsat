@@ -20,13 +20,4 @@
     <PackageReference Include="System.CodeDom" Version="5.0.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.9.0" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Data\Templates\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="Data\Templates\ImplantTemplate-Main.cs" />
-    <Compile Remove="Data\Templates\ImplantTemplate-WebsocketCSharp.cs" />
-    <Compile Remove="Data\Templates\ImplantTemplate-MainCSharp.cs" />
-  </ItemGroup>
 </Project>
